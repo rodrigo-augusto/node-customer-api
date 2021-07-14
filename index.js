@@ -30,6 +30,7 @@ const swaggerDocs = swaggerJsDoc(swaggerOptions);
 app.use('/swagger-ui', swaggerUi.serve, swaggerUi.setup(swaggerDocs));
 
 app.use(require('./app_routes/clienteRoute.js'));
+app.use('/', (req, res) => {res.redirect('/swagger-ui') });
 
 app.listen(PORT, () => {
     console.log(`Express started on port ${PORT}`);
