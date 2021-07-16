@@ -1,11 +1,58 @@
 const express = require('express');
 const clienteRoute = express.Router();
 
-const produtoAPI = require('../app_external_apis/produtoAPI.js');
+const ClienteService = require('../app_services/clienteService.js');
 const ClienteRepository = require('../app_repositories/clienteRepository.js');
 const Cliente = require('../app_models/cliente.js');
-const Produto = require('../app_models/produto.js');
+
 const BASE_ROOT = '/cliente';
+
+const ClienteController = new function() {
+
+    var clienteRepository = new ClienteRepository();
+    var clienteService = new ClienteService();
+
+    this.listAll = function(req, res) {
+        return res.json(clienteRepository.listAll());
+    }
+
+    this.create = function(req, res) {
+        const body = req.body;
+        if (!body || !Object.keys(body).length) {
+            return res.status(400).end();
+        }
+
+        const opStatus = clienteService.create(new Cliente(body));
+        return opStatus.hasError ? res.status(opStatus.status).end() : res.json(opStatus.data);
+    }
+
+    this.update = function(req, res) {
+        const body = req.body;
+        if (!body || !Object.keys(body).length) {
+            return res.status(400).end();
+        }
+
+        const clientePersist = new Cliente(body);
+        clientePersist.email = req.params.email;
+        const opStatus = clienteService.update(clientePersist);
+        return opStatus.hasError ? res.status(opStatus.status).end() : res.json(opStatus.data);
+    }
+
+    this.addProductToList = async function(req, res) {
+        const email = req.params.email;
+        const idProduto = req.params.idProduto;
+
+        const opStatus = await clienteService.addProductToList(email, idProduto);
+        return opStatus.hasError ? res.status(opStatus.status).end() : res.json(opStatus.data);
+    }
+
+    this.delete = function(req, res) {
+        const email = req.params.email;
+        const opStatus = clienteService.delete(email);
+        return res.status(opStatus.status).end();
+    }
+
+}();
 
 /**
 * @swagger
@@ -67,10 +114,7 @@ const BASE_ROOT = '/cliente';
 *                           items:
 *                               $ref: '#/components/schemas/Cliente'
 */
-clienteRoute.get(`${BASE_ROOT}/`, (req, res) => {
-    const clienteRepository = new ClienteRepository();
-    return res.json(clienteRepository.listAll());
-});
+clienteRoute.get(`${BASE_ROOT}/`, ClienteController.listAll);
 
 /**
 * @swagger
@@ -91,25 +135,7 @@ clienteRoute.get(`${BASE_ROOT}/`, (req, res) => {
 *                       schema:
 *                           $ref: '#/components/schemas/Cliente'
 */
-clienteRoute.post(`${BASE_ROOT}/`, (req, res) => {
-    const body = req.body;
-    if (!body || !Object.keys(body).length) {
-        return res.status(400).end();
-    }
-
-    const clientePersist = new Cliente(body);
-    if (!Cliente.VALIDATOR.allValid(clientePersist)) {
-        return res.status(409).end();
-    }
-
-    const clienteRepository = new ClienteRepository();
-    if (!clienteRepository.findByEmail(clientePersist.email)) {
-        clienteRepository.add(clientePersist);
-        return res.json(clientePersist);
-    }
-
-    return res.status(409).end();
-});
+clienteRoute.post(`${BASE_ROOT}/`, ClienteController.create);
 
 /**
 * @swagger
@@ -136,28 +162,7 @@ clienteRoute.post(`${BASE_ROOT}/`, (req, res) => {
 *                       schema:
 *                           $ref: '#/components/schemas/Cliente'
 */
-clienteRoute.put(`${BASE_ROOT}/:email`, (req, res) => {
-    const email = req.params.email;
-
-    const clienteRepository = new ClienteRepository();
-    const cliente = clienteRepository.findByEmail(email);
-    if (!cliente) {
-        return res.status(404).end();
-    }
-
-    const body = req.body;
-    if (!body || !Object.keys(body).length) {
-        return res.status(400).end();
-    }
-
-    const clientePersist = new Cliente(body);
-    clientePersist.email = email;
-    if (!Cliente.VALIDATOR.allValid(clientePersist)) {
-        return res.status(409).end();
-    }
-    clienteRepository.update(clientePersist);
-    return res.json(clientePersist);
-});
+clienteRoute.put(`${BASE_ROOT}/:email`, ClienteController.update);
 
 /**
 * @swagger
@@ -183,35 +188,7 @@ clienteRoute.put(`${BASE_ROOT}/:email`, (req, res) => {
 *                       schema:
 *                           $ref: '#/components/schemas/Cliente'
 */
-clienteRoute.put(`${BASE_ROOT}/:email/produto/:idProduto`, async (req, res) => {
-    const email = req.params.email;
-    const idProduto = req.params.idProduto;
-
-    const clienteRepository = new ClienteRepository();
-    const cliente = clienteRepository.findByEmail(email);
-    if (!cliente) {
-        return res.status(404).end();
-    }
-
-    const ret = {};
-    try{
-        ret.request = await produtoAPI.get(`/${idProduto}/`);
-    } catch (err) {
-    }
-
-    if (!ret.request || !ret.request.data) {
-        return res.status(404).end();
-    }
-
-    const produto = ret.request.data;
-    if (!cliente.produtosFavoritos.some(item => item.id == produto.id)) {
-        cliente.produtosFavoritos.push(new Produto(produto));
-        clienteRepository.update(cliente);
-        return res.json(cliente);
-    }
-
-    return res.status(409).end();
-});
+clienteRoute.put(`${BASE_ROOT}/:email/produto/:idProduto`, ClienteController.addProductToList);
 
 /**
 * @swagger
@@ -229,17 +206,6 @@ clienteRoute.put(`${BASE_ROOT}/:email/produto/:idProduto`, async (req, res) => {
 *           '200':
 *               description: Success
 */
-clienteRoute.delete(`${BASE_ROOT}/:email`, (req, res) => {
-    const email = req.params.email;
-
-    const clienteRepository = new ClienteRepository();
-    const cliente = clienteRepository.findByEmail(email);
-    if (!cliente) {
-        return res.status(404).end();
-    }
-
-    clienteRepository.deleteByEmail(email);
-    return res.status(200).end();
-});
+clienteRoute.delete(`${BASE_ROOT}/:email`, ClienteController.delete);
 
 module.exports = clienteRoute;

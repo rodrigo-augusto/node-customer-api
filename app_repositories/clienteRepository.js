@@ -15,7 +15,6 @@ class ClienteRepository {
     update(cliente) {
         const clienteBase = this.findByEmail(cliente.email);
         clienteBase.nome = cliente.nome;
-        clienteBase.produtosFavoritos = cliente.produtosFavoritos;
     }
 
     deleteByEmail(email) {

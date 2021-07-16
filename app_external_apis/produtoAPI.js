@@ -1,7 +1,17 @@
 const axios = require('axios');
 
-const produtoAPI = axios.create({
-    baseURL: 'http://challenge-api.luizalabs.com/api/product'
-});
+class ProdutoAPI {
 
-module.exports = produtoAPI;
+    constructor() {
+        this.api = axios.create({
+           baseURL: 'http://challenge-api.luizalabs.com/api/product'
+       });
+    }
+
+    getProductById(idProduto) {
+        return this.api.get(`/${idProduto}/`);
+    }
+
+}
+
+module.exports = ProdutoAPI;

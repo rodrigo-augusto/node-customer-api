@@ -20,8 +20,7 @@ const swaggerOptions = {
             title: 'Clientes API',
             version: '1.0.0',
             description: 'API para controle dos dados cadastrais de Clientes.'
-        },
-        servers: [{url: 'http://localhost:' + PORT}, {url: 'https://node-customer-api.herokuapp.com'}]
+        }
     },
     apis: ['./app_routes/*.js']
 };
